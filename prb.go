@@ -72,8 +72,10 @@ func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
 
 }
 func (b *PriorityRingBuffer[T]) Size() int {
-
+	b.lock()
+	defer b.unlock()
+	return b.size
 }
 func (b *PriorityRingBuffer[T]) Capacity() int {
-
+	return b.capacity
 }
