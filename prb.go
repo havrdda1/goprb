@@ -1,6 +1,7 @@
 package prb
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -62,7 +63,12 @@ func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
 }
 
 func (b *PriorityRingBuffer[T]) PeekHead() (Element[T], error) {
-
+	b.lock()
+	defer b.unlock()
+	if b.size == 0 {
+		return Element[T]{}, errors.New("Buffer is empty")
+	}
+	return b.elements[b.head], nil
 }
 func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
 
