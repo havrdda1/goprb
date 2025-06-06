@@ -74,6 +74,9 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 
 	for i := 1; i <= b.bubbleWindow && b.size > 0; i++ {
 		previousIndex := (insertIndex - 1 + b.capacity) % b.capacity
+		if b.size == b.capacity && previousIndex == b.head {
+			break
+		}
 		previousElement := b.elements[previousIndex]
 		currentElement := b.elements[insertIndex]
 		if currentElement.Priority > previousElement.Priority || currentElement.InsertionOrder < previousElement.InsertionOrder {
