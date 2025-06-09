@@ -97,7 +97,15 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 }
 
 func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
-
+	b.lock()
+	defer b.unlock()
+	if b.size == 0 {
+		return Element[T]{}, errors.New("buffer is empty")
+	}
+	element := b.elements[b.head]
+	b.head = (b.head + 1) % b.capacity
+	b.size--
+	return element, nil
 }
 
 func (b *PriorityRingBuffer[T]) PeekHead() (Element[T], error) {
