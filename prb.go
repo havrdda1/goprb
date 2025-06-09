@@ -118,7 +118,21 @@ func (b *PriorityRingBuffer[T]) PeekHead() (Element[T], error) {
 	return b.elements[b.head], nil
 }
 func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
-
+	b.lock()
+	defer b.unlock()
+	if b.size == 0 {
+		return Element[T]{}, errors.New("buffer is empty")
+	}
+	maxIndex := b.head
+	for i := 1; i <= b.size; i++ {
+		index := (b.head + i) % b.capacity
+		e := b.elements[index]
+		max := b.elements[maxIndex]
+		if e.Priority > max.Priority || (e.Priority == max.Priority && max.InsertionOrder < max.InsertionOrder) {
+			maxIndex = index
+		}
+	}
+	return b.elements[maxIndex], nil
 }
 
 func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
