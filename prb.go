@@ -30,6 +30,13 @@ type Config struct {
 }
 
 func New[T comparable](config Config) *PriorityRingBuffer[T] {
+	if config.Capacity <= 0 {
+		panic("PriorityRingBuffer: capacity must be positive")
+	}
+	if config.BubbleWindow < 0 || config.BubbleWindow > config.Capacity-1 {
+		panic("PriorityRingBuffer: bubbleWindow must be zero or positive and less than capacity")
+	}
+
 	var mu *sync.Mutex
 	if config.ThreadSafe {
 		mu = &sync.Mutex{}
@@ -124,11 +131,12 @@ func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
 		return Element[T]{}, errors.New("buffer is empty")
 	}
 	maxIndex := b.head
-	for i := 1; i <= b.size; i++ {
+	for i := 1; i < b.size; i++ {
 		index := (b.head + i) % b.capacity
-		e := b.elements[index]
-		max := b.elements[maxIndex]
-		if e.Priority > max.Priority || (e.Priority == max.Priority && max.InsertionOrder < max.InsertionOrder) {
+		candidate := b.elements[index]
+		currMax := b.elements[maxIndex]
+		if candidate.Priority > currMax.Priority ||
+			(candidate.Priority == currMax.Priority && candidate.InsertionOrder < currMax.InsertionOrder) {
 			maxIndex = index
 		}
 	}
