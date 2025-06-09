@@ -5,13 +5,13 @@ import (
 	"sync"
 )
 
-type Element[T any] struct {
+type Element[T comparable] struct {
 	Value          T
 	Priority       int
 	InsertionOrder int64
 }
 
-type PriorityRingBuffer[T any] struct {
+type PriorityRingBuffer[T comparable] struct {
 	elements       []Element[T]
 	capacity       int
 	head, tail     int
@@ -29,7 +29,7 @@ type Config struct {
 	ThreadSafe     bool
 }
 
-func New[T any](config Config) *PriorityRingBuffer[T] {
+func New[T comparable](config Config) *PriorityRingBuffer[T] {
 	var mu *sync.Mutex
 	if config.ThreadSafe {
 		mu = &sync.Mutex{}
@@ -79,7 +79,8 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 		}
 		previousElement := b.elements[previousIndex]
 		currentElement := b.elements[insertIndex]
-		if currentElement.Priority > previousElement.Priority || currentElement.InsertionOrder < previousElement.InsertionOrder {
+		if currentElement.Priority > previousElement.Priority ||
+			(currentElement.Priority == previousElement.Priority && currentElement.InsertionOrder < previousElement.InsertionOrder) {
 			b.elements[insertIndex], b.elements[previousIndex] = b.elements[previousIndex], b.elements[insertIndex]
 			insertIndex = previousIndex
 		} else {
@@ -121,7 +122,24 @@ func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
 }
 
 func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
-
+	b.lock()
+	defer b.unlock()
+	var result []int
+	for i := 0; i < b.size; i++ {
+		index := (b.head + i) % b.capacity
+		element := b.elements[index]
+		match := true
+		if value != nil && element.Value != *value {
+			match = false
+		}
+		if priority != nil && element.Priority != *priority {
+			match = false
+		}
+		if match {
+			result = append(result, index)
+		}
+	}
+	return result
 }
 
 func (b *PriorityRingBuffer[T]) Size() int {
