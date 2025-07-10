@@ -151,25 +151,48 @@ func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
 	return b.elements[maxIndex], nil
 }
 
-func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
+type SearchFilter[T comparable] func(Element[T]) bool
+
+func (b *PriorityRingBuffer[T]) Search(filters ...SearchFilter[T]) []int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+
 	var result []int
 	for i := 0; i < b.size; i++ {
 		index := (b.head + i) % b.capacity
 		element := b.elements[index]
+
 		match := true
-		if value != nil && element.Value != *value {
-			match = false
+		for _, filter := range filters {
+			if !filter(element) {
+				match = false
+				break
+			}
 		}
-		if priority != nil && element.Priority != *priority {
-			match = false
-		}
+
 		if match {
-			result = append(result, index)
+			result = append(result, i)
 		}
 	}
 	return result
+}
+
+func SearchByValue[T comparable](value T) SearchFilter[T] {
+	return func(e Element[T]) bool {
+		return e.Value == value
+	}
+}
+
+func SearchByPriority[T comparable](priority int) SearchFilter[T] {
+	return func(e Element[T]) bool {
+		return e.Priority == priority
+	}
+}
+
+func SearchByMinPriority[T comparable](minPriority int) SearchFilter[T] {
+	return func(e Element[T]) bool {
+		return e.Priority >= minPriority
+	}
 }
 
 func (b *PriorityRingBuffer[T]) Len() int {
