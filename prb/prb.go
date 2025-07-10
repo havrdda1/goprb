@@ -219,3 +219,64 @@ func (b *PriorityRingBuffer[T]) Len() int {
 	defer b.mu.RUnlock()
 	return b.size
 }
+
+func (b *PriorityRingBuffer[T]) Cap() int {
+	return b.capacity
+}
+
+func (b *PriorityRingBuffer[T]) IsEmpty() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.size == 0
+}
+
+func (b *PriorityRingBuffer[T]) IsFull() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.size == b.capacity
+}
+
+func (b *PriorityRingBuffer[T]) Snapshot() []Element[T] {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if b.size == 0 {
+		return nil
+	}
+
+	result := make([]Element[T], b.size)
+	for i := 0; i < b.size; i++ {
+		index := (b.head + i) % b.capacity
+		result[i] = b.elements[index]
+	}
+
+	return result
+}
+
+func (b *PriorityRingBuffer[T]) Clear() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.head = 0
+	b.tail = 0
+	b.size = 0
+}
+
+type Stats struct {
+	Size         int
+	Capacity     int
+	BubbleWindow int
+	OrderCounter int64
+}
+
+func (b *PriorityRingBuffer[T]) GetStats() Stats {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return Stats{
+		Size:         b.size,
+		Capacity:     b.capacity,
+		BubbleWindow: b.bubbleWindow,
+		OrderCounter: b.orderCounter,
+	}
+}
