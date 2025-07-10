@@ -57,7 +57,11 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	element := Element[T]{Value: value, Priority: priority, InsertionOrder: b.orderCounter}
+	element := Element[T]{
+		Value:          value,
+		Priority:       priority,
+		InsertionOrder: b.orderCounter,
+	}
 	b.orderCounter++
 
 	overwriting := b.size == b.capacity
@@ -71,21 +75,7 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 
 	b.elements[insertIndex] = element
 
-	for i := 1; i <= b.bubbleWindow && b.size > 0; i++ {
-		previousIndex := (insertIndex - 1 + b.capacity) % b.capacity
-		if b.size == b.capacity && previousIndex == b.head {
-			break
-		}
-		previousElement := b.elements[previousIndex]
-		currentElement := b.elements[insertIndex]
-		if currentElement.Priority > previousElement.Priority ||
-			(currentElement.Priority == previousElement.Priority && currentElement.InsertionOrder < previousElement.InsertionOrder) {
-			b.elements[insertIndex], b.elements[previousIndex] = b.elements[previousIndex], b.elements[insertIndex]
-			insertIndex = previousIndex
-		} else {
-			break
-		}
-	}
+	b.bubbleElement(insertIndex)
 
 	b.tail = (b.tail + 1) % b.capacity
 	if overwriting {
@@ -93,7 +83,33 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 	} else {
 		b.size++
 	}
+
 	return nil
+}
+
+func (b *PriorityRingBuffer[T]) bubbleElement(insertIndex int) {
+	for i := 1; i <= b.bubbleWindow && b.size > 0; i++ {
+		previousIndex := (insertIndex - 1 + b.capacity) % b.capacity
+
+		if b.size == b.capacity && previousIndex == b.head {
+			break
+		}
+
+		current := b.elements[insertIndex]
+		previous := b.elements[previousIndex]
+
+		if b.shouldSwap(current, previous) {
+			b.elements[insertIndex], b.elements[previousIndex] = previous, current
+			insertIndex = previousIndex
+		} else {
+			break
+		}
+	}
+}
+
+func (b *PriorityRingBuffer[T]) shouldSwap(current, previous Element[T]) bool {
+	return current.Priority > previous.Priority ||
+		(current.Priority == previous.Priority && current.InsertionOrder < previous.InsertionOrder)
 }
 
 func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
