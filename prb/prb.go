@@ -43,13 +43,6 @@ func WithOverwriteGuard[T comparable](guard bool) Option[T] {
 	}
 }
 
-type Config struct {
-	Capacity       int
-	BubbleWindow   int
-	OverwriteGuard bool
-	ThreadSafe     bool
-}
-
 func New[T comparable](capacity int, opts ...Option[T]) (*PriorityRingBuffer[T], error) {
 	if capacity <= 0 {
 		return nil, ErrInvalidCapacity
@@ -134,39 +127,45 @@ func (b *PriorityRingBuffer[T]) shouldSwap(current, previous Element[T]) bool {
 func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	if b.size == 0 {
 		return Element[T]{}, ErrBufferEmpty
 	}
+
 	element := b.elements[b.head]
 	b.head = (b.head + 1) % b.capacity
 	b.size--
+
 	return element, nil
 }
 
 func (b *PriorityRingBuffer[T]) Peek() (Element[T], error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+
 	if b.size == 0 {
 		return Element[T]{}, ErrBufferEmpty
 	}
+
 	return b.elements[b.head], nil
 }
+
 func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+
 	if b.size == 0 {
-		return Element[T]{}, errors.New("buffer is empty")
+		return Element[T]{}, ErrBufferEmpty
 	}
+
 	maxIndex := b.head
 	for i := 1; i < b.size; i++ {
 		index := (b.head + i) % b.capacity
-		candidate := b.elements[index]
-		currMax := b.elements[maxIndex]
-		if candidate.Priority > currMax.Priority ||
-			(candidate.Priority == currMax.Priority && candidate.InsertionOrder < currMax.InsertionOrder) {
+		if b.shouldSwap(b.elements[index], b.elements[maxIndex]) {
 			maxIndex = index
 		}
 	}
+
 	return b.elements[maxIndex], nil
 }
 
@@ -193,6 +192,7 @@ func (b *PriorityRingBuffer[T]) Search(filters ...SearchFilter[T]) []int {
 			result = append(result, i)
 		}
 	}
+
 	return result
 }
 
