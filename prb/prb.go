@@ -109,16 +109,16 @@ func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
 }
 
 func (b *PriorityRingBuffer[T]) PeekHead() (Element[T], error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	if b.size == 0 {
 		return Element[T]{}, ErrBufferEmpty
 	}
 	return b.elements[b.head], nil
 }
 func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	if b.size == 0 {
 		return Element[T]{}, errors.New("buffer is empty")
 	}
@@ -136,8 +136,8 @@ func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
 }
 
 func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	var result []int
 	for i := 0; i < b.size; i++ {
 		index := (b.head + i) % b.capacity
@@ -157,8 +157,8 @@ func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
 }
 
 func (b *PriorityRingBuffer[T]) Size() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return b.size
 }
 func (b *PriorityRingBuffer[T]) Capacity() int {
