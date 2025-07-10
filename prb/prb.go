@@ -108,7 +108,7 @@ func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
 	return element, nil
 }
 
-func (b *PriorityRingBuffer[T]) PeekHead() (Element[T], error) {
+func (b *PriorityRingBuffer[T]) Peek() (Element[T], error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	if b.size == 0 {
@@ -156,7 +156,7 @@ func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
 	return result
 }
 
-func (b *PriorityRingBuffer[T]) Size() int {
+func (b *PriorityRingBuffer[T]) Len() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.size
