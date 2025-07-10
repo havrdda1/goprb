@@ -26,7 +26,7 @@ type PriorityRingBuffer[T comparable] struct {
 	bubbleWindow   int
 	orderCounter   int64
 	overwriteGuard bool
-	mu             *sync.Mutex
+	mu             sync.RWMutex
 }
 
 type Config struct {
@@ -44,33 +44,18 @@ func New[T comparable](config Config) (*PriorityRingBuffer[T], error) {
 		return nil, ErrInvalidWindow
 	}
 
-	var mu *sync.Mutex
-	if config.ThreadSafe {
-		mu = &sync.Mutex{}
-	}
 	return &PriorityRingBuffer[T]{
 		elements:       make([]Element[T], config.Capacity),
 		capacity:       config.Capacity,
 		bubbleWindow:   config.BubbleWindow,
 		overwriteGuard: config.OverwriteGuard,
-		mu:             mu,
+		mu:             sync.RWMutex{},
 	}, nil
 }
 
-func (b *PriorityRingBuffer[T]) lock() {
-	if b.mu != nil {
-		b.mu.Lock()
-	}
-}
-
-func (b *PriorityRingBuffer[T]) unlock() {
-	if b.mu != nil {
-		b.mu.Unlock()
-	}
-}
 func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
-	b.lock()
-	defer b.unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	element := Element[T]{Value: value, Priority: priority, InsertionOrder: b.orderCounter}
 	b.orderCounter++
@@ -112,8 +97,8 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 }
 
 func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
-	b.lock()
-	defer b.unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.size == 0 {
 		return Element[T]{}, ErrBufferEmpty
 	}
@@ -124,16 +109,16 @@ func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
 }
 
 func (b *PriorityRingBuffer[T]) PeekHead() (Element[T], error) {
-	b.lock()
-	defer b.unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.size == 0 {
 		return Element[T]{}, ErrBufferEmpty
 	}
 	return b.elements[b.head], nil
 }
 func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
-	b.lock()
-	defer b.unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.size == 0 {
 		return Element[T]{}, errors.New("buffer is empty")
 	}
@@ -151,8 +136,8 @@ func (b *PriorityRingBuffer[T]) PeekMaxPriority() (Element[T], error) {
 }
 
 func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
-	b.lock()
-	defer b.unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	var result []int
 	for i := 0; i < b.size; i++ {
 		index := (b.head + i) % b.capacity
@@ -172,8 +157,8 @@ func (b *PriorityRingBuffer[T]) Search(value *T, priority *int) []int {
 }
 
 func (b *PriorityRingBuffer[T]) Size() int {
-	b.lock()
-	defer b.unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	return b.size
 }
 func (b *PriorityRingBuffer[T]) Capacity() int {
