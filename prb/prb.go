@@ -8,6 +8,8 @@ import (
 var (
 	ErrInvalidCapacity = errors.New("capacity must be positive")
 	ErrInvalidWindow   = errors.New("bubbleWindow must be zero or positive and less than capacity")
+	ErrBufferEmpty     = errors.New("buffer is empty")
+	ErrBufferFull      = errors.New("buffer is full, refused to overwrite higher priority element")
 )
 
 type Element[T comparable] struct {
@@ -78,7 +80,7 @@ func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
 
 	if overwriting && b.overwriteGuard {
 		if priority <= b.elements[b.head].Priority {
-			return errors.New("buffer is full, refused to overwrite higher priority element")
+			return ErrBufferFull
 		}
 	}
 
@@ -113,7 +115,7 @@ func (b *PriorityRingBuffer[T]) Dequeue() (Element[T], error) {
 	b.lock()
 	defer b.unlock()
 	if b.size == 0 {
-		return Element[T]{}, errors.New("buffer is empty")
+		return Element[T]{}, ErrBufferEmpty
 	}
 	element := b.elements[b.head]
 	b.head = (b.head + 1) % b.capacity
@@ -125,7 +127,7 @@ func (b *PriorityRingBuffer[T]) PeekHead() (Element[T], error) {
 	b.lock()
 	defer b.unlock()
 	if b.size == 0 {
-		return Element[T]{}, errors.New("buffer is empty")
+		return Element[T]{}, ErrBufferEmpty
 	}
 	return b.elements[b.head], nil
 }
