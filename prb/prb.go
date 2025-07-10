@@ -29,6 +29,20 @@ type PriorityRingBuffer[T comparable] struct {
 	mu             sync.RWMutex
 }
 
+type Option[T comparable] func(*PriorityRingBuffer[T])
+
+func WithBubbleWindow[T comparable](window int) Option[T] {
+	return func(b *PriorityRingBuffer[T]) {
+		b.bubbleWindow = window
+	}
+}
+
+func WithOverwriteGuard[T comparable](guard bool) Option[T] {
+	return func(b *PriorityRingBuffer[T]) {
+		b.overwriteGuard = guard
+	}
+}
+
 type Config struct {
 	Capacity       int
 	BubbleWindow   int
@@ -36,21 +50,26 @@ type Config struct {
 	ThreadSafe     bool
 }
 
-func New[T comparable](config Config) (*PriorityRingBuffer[T], error) {
-	if config.Capacity <= 0 {
+func New[T comparable](capacity int, opts ...Option[T]) (*PriorityRingBuffer[T], error) {
+	if capacity <= 0 {
 		return nil, ErrInvalidCapacity
 	}
-	if config.BubbleWindow < 0 || config.BubbleWindow > config.Capacity-1 {
+
+	b := &PriorityRingBuffer[T]{
+		elements: make([]Element[T], capacity),
+		capacity: capacity,
+		mu:       sync.RWMutex{},
+	}
+
+	for _, opt := range opts {
+		opt(b)
+	}
+
+	if b.bubbleWindow < 0 || b.bubbleWindow > capacity-1 {
 		return nil, ErrInvalidWindow
 	}
 
-	return &PriorityRingBuffer[T]{
-		elements:       make([]Element[T], config.Capacity),
-		capacity:       config.Capacity,
-		bubbleWindow:   config.BubbleWindow,
-		overwriteGuard: config.OverwriteGuard,
-		mu:             sync.RWMutex{},
-	}, nil
+	return b, nil
 }
 
 func (b *PriorityRingBuffer[T]) Insert(value T, priority int) error {
