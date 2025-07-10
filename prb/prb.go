@@ -161,16 +161,3 @@ func (b *PriorityRingBuffer[T]) Len() int {
 	defer b.mu.RUnlock()
 	return b.size
 }
-func (b *PriorityRingBuffer[T]) Capacity() int {
-	return b.capacity
-}
-
-func (b *PriorityRingBuffer[T]) Elements() []Element[T] {
-	return b.elements
-}
-func (b *PriorityRingBuffer[T]) Head() int {
-	return b.head
-}
-func (b *PriorityRingBuffer[T]) Tail() int {
-	return b.tail
-}
