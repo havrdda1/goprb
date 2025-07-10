@@ -5,6 +5,11 @@ import (
 	"sync"
 )
 
+var (
+	ErrInvalidCapacity = errors.New("capacity must be positive")
+	ErrInvalidWindow   = errors.New("bubbleWindow must be zero or positive and less than capacity")
+)
+
 type Element[T comparable] struct {
 	Value          T
 	Priority       int
@@ -29,12 +34,12 @@ type Config struct {
 	ThreadSafe     bool
 }
 
-func New[T comparable](config Config) *PriorityRingBuffer[T] {
+func New[T comparable](config Config) (*PriorityRingBuffer[T], error) {
 	if config.Capacity <= 0 {
-		panic("PriorityRingBuffer: capacity must be positive")
+		return nil, ErrInvalidCapacity
 	}
 	if config.BubbleWindow < 0 || config.BubbleWindow > config.Capacity-1 {
-		panic("PriorityRingBuffer: bubbleWindow must be zero or positive and less than capacity")
+		return nil, ErrInvalidWindow
 	}
 
 	var mu *sync.Mutex
@@ -47,7 +52,7 @@ func New[T comparable](config Config) *PriorityRingBuffer[T] {
 		bubbleWindow:   config.BubbleWindow,
 		overwriteGuard: config.OverwriteGuard,
 		mu:             mu,
-	}
+	}, nil
 }
 
 func (b *PriorityRingBuffer[T]) lock() {
@@ -171,4 +176,14 @@ func (b *PriorityRingBuffer[T]) Size() int {
 }
 func (b *PriorityRingBuffer[T]) Capacity() int {
 	return b.capacity
+}
+
+func (b *PriorityRingBuffer[T]) Elements() []Element[T] {
+	return b.elements
+}
+func (b *PriorityRingBuffer[T]) Head() int {
+	return b.head
+}
+func (b *PriorityRingBuffer[T]) Tail() int {
+	return b.tail
 }
